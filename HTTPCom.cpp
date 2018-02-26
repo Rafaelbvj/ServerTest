@@ -106,7 +106,9 @@ sprintf(hp->op.data,"%s\r\n",hp->op.data);
 
 if(hp->op.httpparams == NULL){
     sprintf(hp->op.data,"%s\0",hp->op.data);
-    return send(s,hp->op.data,addr,0);
+    send(s,hp->op.data,addr,0);
+    free(hp->op.data);
+    return 2;
 }
 
 sprintf(hp->op.data,"%s%s\0",hp->op.data,hp->op.httpparams);
