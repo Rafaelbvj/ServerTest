@@ -19,7 +19,6 @@ char *httpparams;
 }HTTPOperation;
 typedef struct httppage{
 string title;           //Opcional
-char *method;
 vector <string> params;
 vector <string> values;
 HTTPOperation op;

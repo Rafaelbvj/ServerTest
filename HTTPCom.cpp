@@ -1,16 +1,15 @@
 #include "HTTPCom.h"
 int DetachHTML(HTTPPage* hp){
     RemoveHttpParam(hp,"Content-Length");
-    if(hp == NULL){
-        return -1;
+    if(hp->op.httpparams!= NULL){
+        free(hp->op.httpparams);
+        hp->op.httpparams = NULL;
     }
-    free(hp->op.httpparams);
-    hp->op.data = NULL;
-    hp->op.httpparams = NULL;
+
     return 0;
 }
 char *GetPostData(HTTPPage *hp,char* data,unsigned long sizedata){
-
+char *toreturn;
     for(unsigned long i=0;i<sizedata||data[i] == '\0';i++){
         if(!strncmp(&data[i],"\r\n\r\n\0",4)){
 
@@ -19,22 +18,22 @@ char *GetPostData(HTTPPage *hp,char* data,unsigned long sizedata){
             memcpy(hp->op.data,&data[i+4],sizedata-i-4);
 
             hp->op.data[sizedata-i-4] = '\0';
-            return hp->op.data;
+            toreturn = hp->op.data;
+            hp->op.data = NULL;
+            return toreturn;
         }
     }
 
     return 0;
 }
-
-
 int  ClearHttpPage(HTTPPage *hp){
 DetachHTML(hp);
 hp->params.clear();
 hp->values.clear();
 hp->title.clear();
-if(hp->op.httpparams != NULL){
-    free(hp->op.httpparams);
-    hp->op.httpparams = NULL;
+if(hp->op.data != NULL){
+    free(hp->op.data);
+
 }
 ZeroMemory(&hp->op,sizeof(HTTPOperation));
 return 0;
@@ -87,6 +86,7 @@ ho->values.push_back(string(value));
 return 0;
 }
 int AttachHTML(HTTPPage *hp,const char *path){
+ZeroMemory(&hp->op,sizeof(HTTPOperation));
 hp->htmlfile = fopen(path,"rb");
 if(hp ->htmlfile == NULL){return -1;}
 fseek(hp->htmlfile,0,SEEK_END);
@@ -94,11 +94,13 @@ hp->op.sizedata = ftell(hp->htmlfile);
 rewind(hp->htmlfile);
 hp->op.httpparams = (char*)malloc(hp->op.sizedata*sizeof(char));
 fread(hp->op.httpparams,sizeof(char),hp->op.sizedata,hp->htmlfile);
+fclose(hp->htmlfile);
 hp->op.data =(char*)malloc(sizeof(char)*100);
 sprintf(hp->op.data,"%d",hp->op.sizedata);
 AddHttpParam(hp,"Content-Length",hp->op.data);
 free(hp->op.data);
-fclose(hp->htmlfile);
+hp->op.data = NULL;
+
 return 0;
 }
 int  SendHTTPPage(HTTPPage *hp, ServerInfo *sf, SOCKET s){
@@ -106,7 +108,7 @@ int  SendHTTPPage(HTTPPage *hp, ServerInfo *sf, SOCKET s){
 int addr=hp->title.size();
 
 if(addr == 0){
-    return -5;
+    return -1;
 }
 if(hp->params.empty()){
 return send(s,hp->title.c_str(),hp->title.size(),0);
@@ -127,12 +129,16 @@ sprintf(hp->op.data,"%s\r\n",hp->op.data);
 if(hp->op.httpparams == NULL){
     sprintf(hp->op.data,"%s\0",hp->op.data);
     send(s,hp->op.data,addr,0);
-    free(hp->op.data);
     return 2;
 }
-
+else{
 sprintf(hp->op.data,"%s%s\0",hp->op.data,hp->op.httpparams);
+
 send(s,hp->op.data,strlen(hp->op.data),0);
+}
+
 free(hp->op.data);
+hp->op.httpparams = NULL;
+hp->op.data = NULL;
 return 1;
 }

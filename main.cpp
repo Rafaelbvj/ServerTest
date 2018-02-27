@@ -16,15 +16,15 @@ int main()
     HTTPPage hp;
     char *data;
     u_long datasize;
+    fd_set fdr;
+    vector <SOCKET> connected;
     ServerInfo si;
     OpenPort(&si,5200);
     ListenPort(&si,50,MODE_BLOCK);
-    fd_set fdr;
-    vector <SOCKET> connected;
+    ZeroMemory(&hp,sizeof(HTTPPage));
     FD_ZERO(&fdr);
     FD_SET(si.sock,&fdr);
     cout<<"Esperando conexoes..."<<endl;
-
     int ncon =0;
     for(int num =0; (num = select(0,&fdr,0,0,0)) != SOCKET_ERROR;){
 
@@ -55,7 +55,7 @@ int main()
             data = (char*)malloc(sizeof(char)*datasize);
             recv(connected.at(e),data,datasize,0);         //Request
             data[datasize]=  '\0';
-            ClearHttpPage(&hp);
+
             if(data[0] == 'P'){
                 cout<<"Post"<<endl;
                 InitProtocolHTTP(&hp);
@@ -76,7 +76,7 @@ int main()
             }
 
             SendHTTPPage(&hp,&si,connected.at(e));
-            free(data);
+            ClearHttpPage(&hp);
             shutdown(connected.at(e),SD_BOTH);
             FD_CLR(connected.at(e),&fdr);
             connected.erase(connected.begin()+e);
