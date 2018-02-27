@@ -1,10 +1,40 @@
 #include "HTTPCom.h"
+int DetachHTML(HTTPPage* hp){
+    RemoveHttpParam(hp,"Content-Length");
+    if(hp == NULL){
+        return -1;
+    }
+    free(hp->op.httpparams);
+    hp->op.data = NULL;
+    hp->op.httpparams = NULL;
+    return 0;
+}
+char *GetPostData(HTTPPage *hp,char* data,unsigned long sizedata){
+
+    for(unsigned long i=0;i<sizedata||data[i] == '\0';i++){
+        if(!strncmp(&data[i],"\r\n\r\n\0",4)){
+
+            hp->op.data = (char*)malloc(sizeof(char)*(sizedata-i-4));
+
+            memcpy(hp->op.data,&data[i+4],sizedata-i-4);
+
+            hp->op.data[sizedata-i-4] = '\0';
+            return hp->op.data;
+        }
+    }
+
+    return 0;
+}
+
+
 int  ClearHttpPage(HTTPPage *hp){
+DetachHTML(hp);
 hp->params.clear();
 hp->values.clear();
 hp->title.clear();
 if(hp->op.httpparams != NULL){
     free(hp->op.httpparams);
+    hp->op.httpparams = NULL;
 }
 ZeroMemory(&hp->op,sizeof(HTTPOperation));
 return 0;
@@ -19,17 +49,7 @@ int  RemoveHttpParam(HTTPPage *hp,const char *param){
         }
     return -1;
 }
-int DetachHTML(HTTPPage* hp){
-    RemoveHttpParam(hp,"Content-Length");
-    if(hp == NULL){
-        return -1;
-    }
-    free(hp->op.data);
-    hp->op.data = NULL;
-    hp->op.httpparams = NULL;
-    return 0;
-}
-char *GetHTTPParam(HTTPOperation *ht,const char *data,unsigned int sizedata, const char *param){
+char *GetHTTPParam(HTTPOperation *ht,const char *data,unsigned long sizedata, const char *param){
 
 ht->data = strstr(data,param);
 for(int index=0, addr = (int)ht->data;index<(int)&data[sizedata]-addr;index++){
@@ -113,7 +133,6 @@ if(hp->op.httpparams == NULL){
 
 sprintf(hp->op.data,"%s%s\0",hp->op.data,hp->op.httpparams);
 send(s,hp->op.data,strlen(hp->op.data),0);
-
 free(hp->op.data);
 return 1;
 }

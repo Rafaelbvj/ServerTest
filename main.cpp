@@ -7,7 +7,7 @@ using namespace std;
 void InitProtocolHTTP(HTTPPage * h){
     SetHttpTitle(h,1.1,200,"OK");
     AddHttpParam(h,"Server", "Rafael");
-    AddHttpParam(h,"Connection","Keep-Alive");
+    AddHttpParam(h,"Connection","close");
     AddHttpParam(h,"Accept-Ranges","bytes");
     AddHttpParam(h,"Content-Type","text/html");
 }
@@ -24,9 +24,7 @@ int main()
     FD_ZERO(&fdr);
     FD_SET(si.sock,&fdr);
     cout<<"Esperando conexoes..."<<endl;
-    ZeroMemory(&hp,sizeof(HTTPPage));
-    InitProtocolHTTP(&hp);
-    AttachHTML(&hp,"page.html");
+
     int ncon =0;
     for(int num =0; (num = select(0,&fdr,0,0,0)) != SOCKET_ERROR;){
 
@@ -48,26 +46,41 @@ int main()
             ioctlsocket(connected.at(e),FIONREAD,&datasize);
             if(datasize <=0){
             cout<<"Requisicao do cliente!"<<endl;
+            shutdown(connected.at(e),SD_BOTH);
             FD_CLR(connected.at(e),&fdr);
             connected.erase(connected.begin()+e);
             continue;
             }
             cout<<"Cliente "<<e<<" enviou"<<endl;
-            data = (char*)malloc(datasize);
-
+            data = (char*)malloc(sizeof(char)*datasize);
             recv(connected.at(e),data,datasize,0);         //Request
+            data[datasize]=  '\0';
+            ClearHttpPage(&hp);
             if(data[0] == 'P'){
                 cout<<"Post"<<endl;
-                cout<<data<<endl;
+                InitProtocolHTTP(&hp);
+                AttachHTML(&hp,"sair.html");
+
+                cout<<GetPostData(&hp,data, datasize)<<endl;
             }
             if(data[0]== 'G'){
             cout<<"Get"<<endl;
-            SendHTTPPage(&hp,&si,connected.at(e));
-            RemoveHttpParam(&hp,"Content-Type");
-            SetHttpTitle(&hp,1.1,404,"NOT FOUND");
-            DetachHTML(&hp);
+
+            if(strncmp(&data[4],"/favicon.ico",12)==0){
+            SetHttpTitle(&hp,1.1,200,"OK");
             }
+            else{
+            InitProtocolHTTP(&hp);
+            AttachHTML(&hp,"page.html");
+            }
+            }
+
+            SendHTTPPage(&hp,&si,connected.at(e));
             free(data);
+            shutdown(connected.at(e),SD_BOTH);
+            FD_CLR(connected.at(e),&fdr);
+            connected.erase(connected.begin()+e);
+
 
         }
 

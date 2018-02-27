@@ -14,7 +14,7 @@ using namespace std;
 */
 typedef struct httpop{
 char *data;
-int sizedata;
+unsigned int sizedata;
 char *httpparams;
 }HTTPOperation;
 typedef struct httppage{
@@ -25,7 +25,7 @@ vector <string> values;
 HTTPOperation op;
 FILE *htmlfile;
 }HTTPPage;
-char *GetHTTPParam(HTTPOperation*,const char *,unsigned int ,const char *);
+char *GetHTTPParam(HTTPOperation*,const char *,unsigned long ,const char *);
 int  SetHttpMethod(HTTPOperation*,const char *);
 int  AddHttpParam(HTTPPage*,const char *,const char*);
 int  RemoveHttpParam(HTTPPage*,const char*);
@@ -34,4 +34,4 @@ int  AttachHTML(HTTPPage*,const char*);
 int  DetachHTML(HTTPPage*);
 int  ClearHttpPage(HTTPPage *);
 int  SendHTTPPage(HTTPPage*,ServerInfo*,SOCKET s);
-
+char *GetPostData(HTTPPage*,char*,unsigned long);
