@@ -13,6 +13,7 @@ void InitProtocolHTTP(HTTPPage * h){
 }
 int main()
 {
+
     HTTPPage hp;
     char *data;
     u_long datasize;
@@ -21,11 +22,12 @@ int main()
     ServerInfo si;
     OpenPort(&si,5200);
     ListenPort(&si,50,MODE_BLOCK);
-    ZeroMemory(&hp,sizeof(HTTPPage));
     FD_ZERO(&fdr);
     FD_SET(si.sock,&fdr);
+    //FreeConsole();
     cout<<"Esperando conexoes..."<<endl;
     int ncon =0;
+    char *fp;
     for(int num =0; (num = select(0,&fdr,0,0,0)) != SOCKET_ERROR;){
 
     if(FD_ISSET(si.sock,&fdr)){                             //Se conectou-se ao servidor
@@ -46,27 +48,24 @@ int main()
             ioctlsocket(connected.at(e),FIONREAD,&datasize);
             if(datasize <=0){
             cout<<"Requisicao do cliente!"<<endl;
-            shutdown(connected.at(e),SD_BOTH);
-            FD_CLR(connected.at(e),&fdr);
-            connected.erase(connected.begin()+e);
-            continue;
             }
+            else{
             cout<<"Cliente "<<e<<" enviou"<<endl;
             data = (char*)malloc(sizeof(char)*datasize);
             recv(connected.at(e),data,datasize,0);         //Request
             data[datasize]=  '\0';
-
+            fp = GetFileParam(&hp.op,data,datasize);
             if(data[0] == 'P'){
                 cout<<"Post"<<endl;
                 InitProtocolHTTP(&hp);
-                AttachHTML(&hp,"sair.html");
-
-                cout<<GetPostData(&hp,data, datasize)<<endl;
+                RemoveHttpParam(&hp,"Content-Type");
+                AddHttpParam(&hp,"Content-Type","audio/mpeg");
+                AttachHTML(&hp,&fp[1]);
+                GetPostData(&hp,data, datasize);
             }
             if(data[0]== 'G'){
             cout<<"Get"<<endl;
-
-            if(strncmp(&data[4],"/favicon.ico",12)==0){
+            if(strncmp(fp,"/favicon.ico",12)==0){
             SetHttpTitle(&hp,1.1,200,"OK");
             }
             else{
@@ -74,9 +73,11 @@ int main()
             AttachHTML(&hp,"page.html");
             }
             }
-
             SendHTTPPage(&hp,&si,connected.at(e));
             ClearHttpPage(&hp);
+
+            }
+            free(fp);
             shutdown(connected.at(e),SD_BOTH);
             FD_CLR(connected.at(e),&fdr);
             connected.erase(connected.begin()+e);

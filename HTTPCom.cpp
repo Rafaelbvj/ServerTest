@@ -1,9 +1,23 @@
 #include "HTTPCom.h"
+char *GetFileParam(HTTPOperation* hp, const char *data, unsigned long datasize){
+char *toreturn;
+        if(!strncmp(data,"GET",3)||!strncmp(data,"POST",4)){
+        for(unsigned int i=(unsigned long)strstr(data,"/\0"),e = (unsigned long)strstr(&data[5]," \0");;){
+        toreturn = (char*)malloc(sizeof(char)*(e-i));
+        toreturn [e-i] = '\0';
+        memcpy(toreturn,(char*)i,(e-i));
+        break;
+        }
+        return toreturn;
+        }
+return 0;
+}
 int DetachHTML(HTTPPage* hp){
     RemoveHttpParam(hp,"Content-Length");
     if(hp->op.httpparams!= NULL){
         free(hp->op.httpparams);
         hp->op.httpparams = NULL;
+
     }
 
     return 0;
